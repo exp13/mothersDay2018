@@ -1,0 +1,328 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<title>Happy Mother's Day!</title>
+		<meta charset="utf-8">
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<style>
+			body {
+				background:#777;
+				padding:0;
+				margin:0;
+				overflow:hidden;
+			}
+
+			#info {
+				position: absolute;
+				top: 0px;
+				width: 100%;
+				color: #ffffff;
+			}
+
+		</style>
+	</head>
+	<body>
+
+		<div id="container"></div>
+
+		<script src="js/three.js"></script>
+		<script src="js/OBJLoader.js"></script>
+		<script src="js/MTLLoader.js"></script>
+		
+
+  <script id="skyboxVS" type="x-shader/x-vertex">
+
+	uniform mat4 modelMatrix;
+	uniform mat4 viewMatrix;
+      	uniform mat4 projectionMatrix;
+
+     	attribute vec3 position; 
+
+	varying vec3 vWorldPosition;
+	
+	void main() {
+
+		vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+		vWorldPosition = worldPosition.xyz;
+
+		vec4 p = viewMatrix * modelMatrix * vec4(position, 1.0);
+		gl_Position = projectionMatrix * p;
+		
+     	 }
+
+    </script>
+
+
+    <script id="skyboxFS" type="x-shader/x-fragment">
+
+		precision mediump float;
+		
+		uniform samplerCube tCube;
+		varying vec3 vWorldPosition;
+
+		void main() {
+
+			gl_FragColor = textureCube( tCube, vec3(  vWorldPosition ) );
+		}
+	
+    </script>
+
+
+    <script id="environmentMapVS" type="x-shader/x-vertex">
+
+	uniform mat4 modelMatrix;
+	uniform mat4 viewMatrix;
+      	uniform mat4 projectionMatrix;
+
+	uniform vec3 cameraPosition;
+	
+     	attribute vec3 position; 
+     	attribute vec3 normal; 
+
+	varying vec3 vI;
+	varying vec3 vWorldNormal;
+
+	void main() {
+  		vec4 mvPosition = viewMatrix * modelMatrix * vec4( position, 1.0 );
+  		vec4 worldPosition = modelMatrix * vec4( position, 1.0 );
+
+  		vWorldNormal = normalize( mat3( modelMatrix[0].xyz, modelMatrix[1].xyz, modelMatrix[2].xyz ) * normal );
+
+  		vI = worldPosition.xyz - cameraPosition;
+
+  		gl_Position = projectionMatrix * mvPosition;
+	}	
+  
+	</script>
+
+	 <script id="environmentMapFS" type="x-shader/x-fragment">
+
+		precision mediump float;
+
+		uniform samplerCube envMap;
+
+		varying vec3 vI, vWorldNormal;
+
+		void main() {
+  			vec3 reflection = reflect( vI, vWorldNormal );
+  			vec4 envColor = textureCube( envMap, vec3( -reflection.x, reflection.y, reflection.z ) );
+  			gl_FragColor = vec4(envColor);
+		}
+  
+	</script>
+
+
+  <script id="texVS" type="x-shader/x-vertex">
+
+	//Three.js gives us these automatically when a perspective camera is bound to the renderer
+	uniform mat4 modelMatrix;
+	uniform mat4 viewMatrix;
+      	uniform mat4 projectionMatrix;
+
+     	attribute vec3 position;
+	attribute vec2 uv;
+
+	varying vec2 vUV;
+
+	void main() {
+        	vec4 position = viewMatrix * modelMatrix * vec4(position, 1.0);
+	   	vUV = uv;
+        	gl_Position = projectionMatrix * position; 
+     	 }
+
+    </script>
+
+    <script id="texFS" type="x-shader/x-fragment">
+
+	precision mediump float;
+
+	uniform sampler2D tex;
+	varying vec2 vUV;
+
+      	void main() {
+
+		vec4 c = texture2D(tex, vUV);
+        	//gl_FragColor = vec4(vUV.xy, 0.0, 1.0);
+        	gl_FragColor = vec4(c.rgb, 1.0);
+	}
+
+	</script>
+
+
+
+	<script>
+
+		var sb_vs = document.getElementById( 'skyboxVS' ).textContent;
+      		var sb_fs = document.getElementById( 'skyboxFS' ).textContent;
+
+		var em_vs = document.getElementById( 'environmentMapVS' ).textContent;
+      		var em_fs = document.getElementById( 'environmentMapFS' ).textContent;
+		var tex_vs = document.getElementById( 'texVS' ).textContent;
+      		var tex_fs = document.getElementById( 'texFS' ).textContent;
+
+
+
+		var container;
+		var camera, scene, renderer;
+
+		var skyMesh, box, jaguar;
+		var heart1, heart2, fakeHeart;
+		var card, cardMat, cardTex;
+
+		var texture1;
+
+		init();
+		animate();
+
+
+
+		function init() {
+
+			container = document.getElementById( 'container' );
+
+			camera = new THREE.PerspectiveCamera( 50, window.innerWidth / window.innerHeight, 1, 2000 );
+			camera.position.set( 0, 0, 5 );
+
+			scene = new THREE.Scene();
+
+
+					
+
+			var objLoader = new THREE.OBJLoader(  );
+
+
+			var mtlLoader = new THREE.MTLLoader();
+			mtlLoader.setPath("real_heart_red/");
+			mtlLoader.load("1410 Heart.mtl", function(materials){
+				materials.preload();
+				console.log(materials);
+				objLoader.setMaterials(materials);
+				objLoader.setPath("real_heart_red/");
+				objLoader.load("1410 Heart.obj", function(object){
+					console.log(object);
+					object.scale.x = 0.03;
+					object.scale.y = 0.03;
+					object.scale.z = 0.03;
+					object.position.x -= 3.3;
+					object.position.y -= 1;
+					heart1 = object;
+					scene.add(heart1);
+				});
+			});
+
+			mtlLoader.load("1410 Heart.mtl", function(materials){
+				materials.preload();
+				console.log(materials);
+				objLoader.setMaterials(materials);
+				objLoader.setPath("real_heart_red/");
+				objLoader.load("1410 Heart.obj", function(object){
+					console.log(object);
+					object.scale.x = 0.03;
+					object.scale.y = 0.03;
+					object.scale.z = 0.03;
+					object.position.x += 3.3;
+					object.position.y -= 1;
+					heart2 = object;
+					scene.add(heart2);
+				});
+			});
+
+			var objLoader2 = new THREE.OBJLoader();
+			var mtlLoader2 = new THREE.MTLLoader();
+			mtlLoader2.setPath("heart_obj/");
+			mtlLoader2.load("Heart.mtl", function(materials){
+				materials.preload();
+				console.log(materials);
+				objLoader2.setMaterials(materials);
+				objLoader2.setPath("heart_obj/");
+				objLoader2.load("Heart.obj", function(object){
+					console.log(object);
+					object.scale.x = 0.005;
+					object.scale.y = 0.005;
+					object.scale.z = 0.005;
+					object.position.y += 1.7;
+					fakeHeart = object;
+					scene.add(fakeHeart);
+				});
+			});
+
+			cardTex = new THREE.TextureLoader().load("mompoem.png");
+			cardMat = new THREE.MeshBasicMaterial({map: cardTex});
+			var cardGeo = new THREE.PlaneGeometry(15, 10);
+			card = new THREE.Mesh(cardGeo, cardMat);
+			card.scale.x = 0.3;
+			card.scale.y = 0.3;
+			card.scale.z = 0.3;
+			card.position.y -= 0.3;
+			scene.add(card);
+
+			var dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+			dirLight.position.y += 1;
+			dirLight.position.x += 1;
+			var dirLight2 = new THREE.DirectionalLight(0xffffff, 0.8);
+			dirLight2.position.y += 1;
+			dirLight2.position.x -= 1;
+
+			var hemiLight = new THREE.HemisphereLight(0xffffff, 0.8);
+			hemiLight.position.y -= 1;
+			hemiLight.position.z += 0.5;
+
+
+			scene.add(dirLight);
+			scene.add(hemiLight);
+
+
+			renderer = new THREE.WebGLRenderer();
+			renderer.setPixelRatio( window.devicePixelRatio );
+			renderer.setSize( window.innerWidth, window.innerHeight );
+			renderer.setClearColor(0xffffff);
+			container.appendChild( renderer.domElement );
+
+			window.addEventListener( 'resize', onWindowResize, false );
+			document.addEventListener('mousemove', onDocumentMouseMove, false);
+
+		}
+
+
+		function onWindowResize( event ) {
+
+			renderer.setSize( window.innerWidth, window.innerHeight );
+
+			camera.aspect = window.innerWidth / window.innerHeight;
+			camera.updateProjectionMatrix();
+		}
+
+
+		function animate() {
+
+			requestAnimationFrame( animate );
+			render();
+		}
+
+
+		function render() {
+
+			var time = performance.now();
+
+			fakeHeart.rotation.y += 0.01;
+			heart1.rotation.y += 0.01;
+			heart2.rotation.y -= 0.01;
+			
+			heart1.position.y += Math.sin(time*0.008)*.005;
+			heart2.position.y -= Math.sin((time-1000)*0.008)*.005;
+
+			renderer.render( scene, camera );
+		}
+
+		function onDocumentMouseMove(event) {
+			event.preventDefault();
+
+			mouseX = (event.clientX / window.innerWidth) ;
+			mouseY = -(event.clientY / window.innerHeight) ;
+
+		}
+
+
+	</script>
+</body>
+</html>
